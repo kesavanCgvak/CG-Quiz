@@ -354,7 +354,7 @@
             return alert('Please Select a Register Number');
         } 
         bootbox.dialog({
-            message: "Are you sure you want to Delete Register Numbers?",
+            message: "Are you sure you want to reset the quiz details for this registered number?",
             title: "<i class='glyphicon glyphicon-trash'></i> Delete !",
             buttons: {
                 success: {
@@ -379,6 +379,7 @@
                                 }
                                 else{
                                     bootbox.alert(response);
+                                    location.reload();
                                 }
 
                             })

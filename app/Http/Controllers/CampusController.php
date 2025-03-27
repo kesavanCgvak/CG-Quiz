@@ -214,6 +214,7 @@ class CampusController extends Controller
 
         if ($request->hasFile('candidates')) {
             $path = $request->file('candidates')->getRealPath();
+            $path = $request->file('candidates');
             $data = Excel::load($path, function ($reader) {
             })->get();
             if (!empty($data) && $data->count()) {

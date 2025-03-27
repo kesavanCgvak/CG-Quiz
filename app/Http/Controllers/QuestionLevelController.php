@@ -13,6 +13,7 @@ use Mail;
 use Session;
 use App\QuestionLevel;
 use App\Questions;
+use Carbon\Carbon;
 
 class QuestionLevelController extends Controller
 {
@@ -32,10 +33,6 @@ class QuestionLevelController extends Controller
             'title' => 'Question Level'
         );
         $data['levels'] = QuestionLevel::all();
-                       // $data = Questions::orderBy(DB::raw('RAND()'))->take(10)->get();
-                       // echo "<pre>";
-                       // print_r($data);
-                       // exit;
 
         return view('admin.question_level', $data);
     	}
@@ -82,9 +79,10 @@ class QuestionLevelController extends Controller
 			'level' => 'required'
 		);
 		$this->validate($request, $rules);
-
 		$level_id = base64_decode($id);
-		$update = QuestionLevel::where('id', $level_id)->update($request->except(['_token']));
+		$update = QuestionLevel::where('id', $level_id)->update(
+			array_merge($request->except(['_token']), ['updated_at' => Carbon::now()])
+		);
 		if($update) {
 			Session::flash('message', 'Question Level updated successfully');
 			Session::flash('alert-class', 'alert-success');

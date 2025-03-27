@@ -54,13 +54,15 @@ class HomeController extends Controller
 
     public function entertest(Request $request)
     {
+
         if ($request->session()->has('user_id') && session('user_id') != 'admin') {
             $campus_id = session('campus_id');
+            $password = $request->input('test_password');
+            $campus = DB::table('campus_details')->select('campus_id')->where('password', '=', $password)->get();
+            $campus_id =  $campus[0]->campus_id;
             $campus_id_exists = base64_encode($campus_id);
             $data['title'] = "Old User Test";
             $data['campus_id'] = $campus_id_exists;
-            // print_r($data);
-            // exit;
             return view('aptitude_test.olduser', $data);
         }
 
@@ -109,7 +111,7 @@ class HomeController extends Controller
                 $data['title'] = 'For your Information';
                 return view('aptitude_test.dateerror', compact('error'), $data);
             } elseif ($campusdate < $today) {
-                $error = "This URL Does Not Exist";
+                $error = "The link has expired or is no longer available.";
                 $data['title'] = 'For your Information';
                 return view('aptitude_test.dateerror', compact('error'), $data);
             } else {
@@ -131,7 +133,7 @@ class HomeController extends Controller
         $campus_id = $campus->campus_id;
         $campus = Campus::find($campid);
         $data['College'] = $campus->College->college_name;
-        if (session()->has('user_id')) {
+        if (session()->has('user_id')  && session('user_id') == 'admin') {
             return redirect('/apt-form/' . base64_encode($campus->campus_id));
         }
         $data['title'] = 'Fill Details';
@@ -140,8 +142,6 @@ class HomeController extends Controller
 
     public function storeUserDetails(Request $request, $id)
     {
-        // echo "<pre>";
-        // print_r($request->all());
         $campid = base64_decode($id);
         $campus = new Campus;
         $campus_id = $campus->campus_id;
@@ -150,7 +150,7 @@ class HomeController extends Controller
 
         $user_verify = DB::table('users')
                 ->select('id', 'name', 'campus_id')
-                ->where('email', $request->input('email'))
+                ->where('campus_id', $campid)
                 ->where('registration_number', $request->input('registration_number'))
                 ->get();
 
@@ -165,8 +165,6 @@ class HomeController extends Controller
                 return redirect('/user-details/' . base64_encode($campus->campus_id))->withErrors('You Have Already Attended the Test!')->withInput();
             }              
             session(['user_id' => $user_details->id, 'user_name' => $user_details->name]);
-            // $uname = session('user_name');
-            // $uid = session('user_id');
             return redirect('/apt-form/' . base64_encode($user_details->campus_id));
         }else{ 
             $user_find = DB::table('users')
@@ -190,28 +188,25 @@ class HomeController extends Controller
             }
 
             $questions = unserialize($campus->questions);
-         
-            if (count($questions) == 3) {
+            if (isset($questions[4]) && is_array($questions[4]) && count($questions[4]) == 3) {
                 foreach ($sections as $section) {
                     foreach ($levels[$section->id] as $level) {
-                        // $questions[$section->id][$level->level_id]."<br>";
                         $question[] = Questions::where('level_id', $level->level_id)->select('question_number')->where('section_id', $section->id)->orderBy(DB::raw('RAND()'))->take($questions[$section->id][$level->level_id])->get();
                     }
                 }
 
                 foreach ($question as $ques) {
                     foreach ($ques as $key => $value) {
-                        //            echo "<br>";
                         $order[] = ($value->question_number);
                     }
                 }
                 $data_ques = Questions::select('*')->whereIn('question_number', array_unique($order))->get();
             } else {
-                //        echo "<pre>";
                 $question_number = DB::table('questions')
                     ->select('question_number')
                     ->whereIn('question_id', $questions)
                     ->get();
+
                 foreach ($question_number as $num) {
                     $number[] = $num->question_number;
                     $data_ques = Questions::select('*')->whereIn('question_number', $number)->get();
@@ -297,37 +292,17 @@ class HomeController extends Controller
                     ->orderBy(DB::raw('RAND(Q.question_number)'))
                     ->get();
             }
-            //            echo $i;
-            //            exit;
-            // print_r($testquestions);
             $ji = 0;
             $questions = array();
 
             foreach ($testquestions as $key => $tq) {
-                //                print_r($tq);
                 foreach ($tq as $q) {
                     $q_data = $q;
                     $q_data->options = DB::table('question_options')->where('question_id', $q->question_id)->get();
                     $questions[$key][$q->question_number][] = $q_data;
                     $ji++;
                 }
-                //                echo '-----------------------------------------------------------------------';
             }
-            //    echo $i;
-            //    exit;
-            //            foreach ($sections as $section) {
-            //                $i = 0;
-            //                foreach ($testquestions[$section->id] as $testquestion) {
-            //                    $_qid = $testquestion->question_id;
-            //                    $options = DB::table('question_options')->where('question_id', $_qid)->get();
-            //                    $testquestions[$section->id][$i]->options = $options;
-            //                    $i++;
-            //                }
-            //            }
-            //            echo '-----------------------------------------------------------------------';
-
-            //            print_r($testquestions);/**/
-            //            exit;
 
             $campus_time = ($campus->campus_time != '') ? explode("_", $campus->campus_time) : '';
             $campus['time'] = $campus_time[1];
@@ -337,12 +312,8 @@ class HomeController extends Controller
                 floor($campus_time[0] / 3600);
                 $campus['min_val'] = $campus_time[0] * 3600;
             }
-            // echo '<pre>'; print_r($campus);exit();
             $data['title'] = 'Quiz Form';
             $data['questions'] = $questions;
-            // echo"<pre>";
-            // print_r($questions);
-            // exit;
             $data['College'] = $campus->College->college_name;
             return view('aptitude_test.aptitude_form', compact( 'campus', 'sections', 'ji'), $data);
         } else {
